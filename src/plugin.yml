@@ -1,0 +1,3 @@
+name: AntiFlyMod
+main: com.bukkit.gemo.AntiFlyMod.AntiFlyModCore
+version: 1.0
