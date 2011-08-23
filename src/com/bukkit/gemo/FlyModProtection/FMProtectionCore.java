@@ -1,4 +1,4 @@
-package com.bukkit.gemo.AntiFlyMod;
+package com.bukkit.gemo.FlyModProtection;
 
 import java.util.logging.Logger;
 
@@ -9,7 +9,7 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import com.bukkit.gemo.NoGrief.NoGriefCore;
 
-public class AntiFlyModCore extends JavaPlugin
+public class FMProtectionCore extends JavaPlugin
 {
 	private static String pluginName = "AntiFlyMod";
 	private static Logger log = Logger.getLogger("Minecraft");
@@ -18,8 +18,8 @@ public class AntiFlyModCore extends JavaPlugin
 
 	/** LISTENER */
 	private static NoGriefCore core;
-	public static AntiFlyModPL pListener;	
-	public static AntiFlyModEL eListener;
+	public static FMProtectionPL pListener;	
+	public static FMProtectionEL eListener;
 	
 	// AUSGABE IN DER CONSOLE
 	public static void log(String str)
@@ -46,8 +46,8 @@ public class AntiFlyModCore extends JavaPlugin
 		if(searchNoGrief())
 		{		
 			// REGISTER EVENT
-			eListener = new AntiFlyModEL();
-			pListener = new AntiFlyModPL();
+			eListener = new FMProtectionEL();
+			pListener = new FMProtectionPL();
 			
 			PluginManager pm = server.getPluginManager();
 			pm.registerEvent(Event.Type.ENTITY_DEATH, eListener, Event.Priority.Normal, this);

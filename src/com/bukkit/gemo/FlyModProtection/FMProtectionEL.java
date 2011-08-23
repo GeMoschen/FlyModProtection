@@ -1,4 +1,4 @@
-package com.bukkit.gemo.AntiFlyMod;
+package com.bukkit.gemo.FlyModProtection;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -6,7 +6,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityListener;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 
-public class AntiFlyModEL extends EntityListener
+public class FMProtectionEL extends EntityListener
 {
 	/////////////////////////////////////
 	//
@@ -18,7 +18,7 @@ public class AntiFlyModEL extends EntityListener
 	{
 		if(event.getEntity() instanceof Player)
 		{
-			AntiFlyModCore.pListener.clearLists(((Player)event.getEntity()).getName());
+			FMProtectionCore.pListener.clearLists(((Player)event.getEntity()).getName());
 		}
 	}
 
@@ -38,7 +38,7 @@ public class AntiFlyModEL extends EntityListener
 				|| event.getCause() == DamageCause.FALL
 				|| event.getCause() == DamageCause.DROWNING)
 		{
-			AntiFlyModCore.pListener.clearLists(((Player)event.getEntity()).getName());
+			FMProtectionCore.pListener.clearLists(((Player)event.getEntity()).getName());
 		}
 	}
 	

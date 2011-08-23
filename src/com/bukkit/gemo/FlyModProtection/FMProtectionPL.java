@@ -1,12 +1,8 @@
-package com.bukkit.gemo.AntiFlyMod;
+package com.bukkit.gemo.FlyModProtection;
 
 import java.util.HashMap;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerBedEnterEvent;
 import org.bukkit.event.player.PlayerBedLeaveEvent;
@@ -20,7 +16,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import com.bukkit.gemo.NoGrief.NoGriefCore;
 import com.gemo.utils.UtilPermissions;
 
-public class AntiFlyModPL extends PlayerListener {
+public class FMProtectionPL extends PlayerListener {
 	/************************/
 	/** VARS */
 	/************************/
@@ -33,7 +29,7 @@ public class AntiFlyModPL extends PlayerListener {
 	// CONSTRUCTOR
 	//
 	// ///////////////////////////////////
-	public AntiFlyModPL() {
+	public FMProtectionPL() {
 		PlayerFlyCount = new HashMap<String, Integer>();
 		PlayerSprintCount = new HashMap<String, Integer>();
 		lastSaveLocations = new HashMap<String, Location>();
