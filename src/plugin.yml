@@ -1,3 +1,7 @@
-name: AntiFlyMod
-main: com.bukkit.gemo.AntiFlyMod.AntiFlyModCore
+name: FlyModProtection
+main: com.bukkit.gemo.FlyModProtection.FMProtectionCore
 version: 1.0
+commands:
+  fly:
+    description: Flymod related commands
+    usage: /fly
