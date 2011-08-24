@@ -169,6 +169,9 @@ public class FMProtectionPL extends PlayerListener {
 	public void onPlayerRespawn(PlayerRespawnEvent event) {
 		Player player = event.getPlayer();
 
+		if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
+			return;
+		
 		// IN SPACEMAP = ADD PERMISSION
 		if (event.getRespawnLocation().getWorld().getName()
 				.equalsIgnoreCase("space")
@@ -221,6 +224,9 @@ public class FMProtectionPL extends PlayerListener {
 	public void onPlayerTeleport(PlayerTeleportEvent event) {
 		// TP TO SPACE
 		Player player = event.getPlayer();
+		if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
+			return;
+		
 		if (event.getTo().getWorld().getName().equalsIgnoreCase("space")
 				&& !event.getFrom().getWorld().getName()
 						.equalsIgnoreCase("space")) {
@@ -237,8 +243,14 @@ public class FMProtectionPL extends PlayerListener {
 						"nogrief.flymod.use")) {
 					if (!flyAreas.get(player.getName()).isInArea(
 							event.getTo().getBlock().getChunk())) {
-						removePermission(player.getName(),
-								"nogrief.flymod.use", true);
+						if (event.getFrom().getWorld().getName()
+								.equalsIgnoreCase("space"))
+							removePermission(player.getName(),
+									"nogrief.flymod.use", false);
+						else
+							removePermission(player.getName(),
+									"nogrief.flymod.use", true);
+
 					}
 				} else {
 					if (flyAreas.get(player.getName()).isInArea(
@@ -250,8 +262,13 @@ public class FMProtectionPL extends PlayerListener {
 			} else {
 				if (UtilPermissions.playerCanUseCommand(player,
 						"nogrief.flymod.use")) {
-					removePermission(player.getName(), "nogrief.flymod.use",
-							true);
+					if (event.getFrom().getWorld().getName()
+							.equalsIgnoreCase("space"))
+						removePermission(player.getName(),
+								"nogrief.flymod.use", false);
+					else
+						removePermission(player.getName(),
+								"nogrief.flymod.use", true);
 				}
 			}
 		}
