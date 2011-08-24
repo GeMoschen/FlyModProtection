@@ -44,6 +44,9 @@ public class FMProtectionCore extends JavaPlugin {
 	public void onDisable() {
 		if (searchNoGrief()) {
 			log("disabled");
+			if (SQLite.checkConnection()) {
+				SQLite.close();
+			}
 		}
 	}
 
@@ -73,7 +76,7 @@ public class FMProtectionCore extends JavaPlugin {
 						+ "saveTime VARCHAR(255)" + "); ";
 				this.SQLite.createTable(query);
 			}
-			
+
 			// REGISTER EVENT
 			pListener = new FMProtectionPL();
 			PluginManager pm = server.getPluginManager();
@@ -86,7 +89,7 @@ public class FMProtectionCore extends JavaPlugin {
 					Event.Priority.Normal, this);
 
 			loadZones();
-			
+
 			log("enabled");
 
 		} else {
@@ -95,26 +98,26 @@ public class FMProtectionCore extends JavaPlugin {
 	}
 
 	// REMOVE SINGLE ZONE
-	public void removeZone(String playerName)
-	{
-		String query = "DELETE FROM FlyZones"
-			+ " WHERE PlayerName='" + playerName + "';";		
-		SQLite.deleteQuery(query);
-		log("QUERY:" + query);
+	public void removeZone(String playerName) {
+		try {
+			String query = "DELETE FROM FlyZones" + " WHERE PlayerName='"
+					+ playerName + "';";
+			SQLite.deleteQuery(query);
+			FMProtectionPL.flyAreas.remove(playerName);
+		} catch (Exception e) {
+		}
 	}
-	
+
 	// ADD SINGLE ZONE
-	public void addZone(String playerName, FMChunkArea zone) {		
-		if(ZoneExistsInDB(playerName))
+	public void addZone(String playerName, FMChunkArea zone) {
+		if (ZoneExistsInDB(playerName))
 			removeZone(playerName);
-		
+
 		String query = "INSERT INTO FlyZones " + " VALUES ('" + playerName
 				+ "', " + "'" + zone.worldName + "'," + zone.chunk1_x + ", "
 				+ zone.chunk1_z + ", " + zone.chunk2_x + ", " + zone.chunk2_z
 				+ ", " + "'" + zone.lastSavedTime + "');";
 		SQLite.insertQuery(query);
-		
-		log("QUERY:" + query);
 	}
 
 	// EXISTS IN DB
@@ -138,58 +141,71 @@ public class FMProtectionCore extends JavaPlugin {
 
 	// CLEAR ALL ZONES
 	public void clearZones() {
-		String query = "DELETE FROM FlyZones;";
-		SQLite.deleteQuery(query);
+		try {
+			String query = "DROP TABLE FlyZones;";
+			SQLite.deleteQuery(query);
+						
+			if (!this.SQLite.checkTable("FlyZones")) {
+				log("Creating table FlyZones");
+				query = "CREATE TABLE FlyZones ("
+						+ "PlayerName VARCHAR(255), "
+						+ "WorldName VARCHAR(255), "
+						+ "Chunk1_X INT, Chunk1_Z INT, Chunk2_X INT, Chunk2_Z INT,"
+						+ "saveTime VARCHAR(255)" + "); ";
+				this.SQLite.createTable(query);
+			}
+			
+			FMProtectionPL.flyAreas.clear();
+		} catch (Exception e) {
+		}
 	}
 
 	// SAVE ALL ZONES
 	public void saveZones() {
-		String query = "DELETE FROM FlyZones;";
-		SQLite.deleteQuery(query);
+		try {
+			String query = "DELETE FROM FlyZones;";
+			SQLite.deleteQuery(query);
 
-		for (Map.Entry<String, FMChunkArea> entry : FMProtectionPL.flyAreas
-				.entrySet()) {
-			addZone(entry.getKey(), entry.getValue());
+			for (Map.Entry<String, FMChunkArea> entry : FMProtectionPL.flyAreas
+					.entrySet()) {
+				addZone(entry.getKey(), entry.getValue());
+			}
+		} catch (Exception e) {
 		}
 	}
 
 	// LOAD ZONES
-	public void loadZones()
-	{
+	public void loadZones() {
 		String query = "Select * FROM FlyZones;";
 		ResultSet result = null;
 		result = SQLite.sqlQuery(query);
 		int loadedZones = 0;
-		try
-		{			
-			while (result != null && result.next())
-			{
+		try {
+			while (result != null && result.next()) {
 				String playerName = result.getString("PlayerName");
 				String worldName = result.getString("WorldName");
-				int x1 =  result.getInt("Chunk1_X");
-				int z1 =  result.getInt("Chunk1_Z");
-				int x2 =  result.getInt("Chunk2_X");
-				int z2 =  result.getInt("Chunk2_Z");
+				int x1 = result.getInt("Chunk1_X");
+				int z1 = result.getInt("Chunk1_Z");
+				int x2 = result.getInt("Chunk2_X");
+				int z2 = result.getInt("Chunk2_Z");
 				long saved = Long.valueOf(result.getString("saveTime"));
-				
+
 				FMChunkArea zone = new FMChunkArea(worldName, x1, z1, x2, z2);
 				zone.lastSavedTime = saved;
 				zone.empty = false;
 				FMProtectionPL.flyAreas.put(playerName, zone);
-				
+
 				loadedZones++;
-			}	
+			}
 			log("" + loadedZones + " Flyzones loaded");
-		
-		}
-		catch (SQLException e)
-		{
+
+		} catch (SQLException e) {
 			log("Error while loading FlyZones: ");
 			log("");
 			e.printStackTrace();
 		}
 	}
-	
+
 	// GET PLAYER
 	public static Player getPlayer(String name) {
 		Player[] pList = server.getOnlinePlayers();
@@ -218,13 +234,36 @@ public class FMProtectionCore extends JavaPlugin {
 			return true;
 		}
 
+		// CoK-Map
+		if (!player.getWorld().getName().equalsIgnoreCase("world")) {
+			player.sendMessage(ChatColor.RED
+					+ "[FlyZone] FlyZones are not allowed in this world!");
+			return true;
+		}
+
 		if (args == null)
 			return true;
 
-		if (args.length != 1) {
+		if (args.length != 1 && args.length != 2) {
 			player.sendMessage(ChatColor.RED + "[FlyZone] Wrong Syntax!");
 			player.sendMessage(ChatColor.GRAY + "Use: /fly 1 or /fly 2");
 			return true;
+		}
+
+		if (args[0].equalsIgnoreCase("clearall")) {
+			if (player.isOp()) {
+				this.clearZones();
+				player.sendMessage(ChatColor.GREEN
+						+ "[FlyZone] All FlyZones deleted!");
+				return true;
+			}
+		} else if (args[0].equalsIgnoreCase("clear") && args.length == 2) {
+			if (player.isOp()) {
+				this.removeZone(args[1]);
+				player.sendMessage(ChatColor.GREEN + "[FlyZone] Zone of '"
+						+ args[1] + "' deleted!");
+				return true;
+			}
 		}
 
 		try {
@@ -243,6 +282,7 @@ public class FMProtectionCore extends JavaPlugin {
 
 		if (type == 1) {
 			FMChunkArea area = new FMChunkArea();
+			area.worldName = player.getWorld().getName();
 			area.chunk1_x = player.getLocation().getBlock().getChunk().getX();
 			area.chunk1_z = player.getLocation().getBlock().getChunk().getZ();
 			selections.put(player.getName(), area);
@@ -266,18 +306,25 @@ public class FMProtectionCore extends JavaPlugin {
 			long elapsedTime = thisSaveTime - oldSaveTime;
 			long leftTime = coolDown - elapsedTime;
 
+			if (!area.worldName.equalsIgnoreCase(player.getWorld().getName())) {
+				player.sendMessage(ChatColor.RED
+						+ "[FlyZone] You have selected different worlds!");
+				return true;
+			}
+
 			if (leftTime >= 0) {
 				Date d = new Date(oldSaveTime + coolDown);
 				player.sendMessage(ChatColor.RED
 						+ "[FlyZone] You have to wait at least " + hoursToWait
 						+ " hours to define a new FlyZone!");
-				player.sendMessage(ChatColor.GRAY + "Next change available on this date: " + d);
+				player.sendMessage(ChatColor.GRAY
+						+ "Next change available on this date: " + d);
 				return true;
 			}
 
 			area.chunk2_x = player.getLocation().getBlock().getChunk().getX();
 			area.chunk2_z = player.getLocation().getBlock().getChunk().getZ();
-			int maxChunkCount = 5;
+			int maxChunkCount = 8;
 			if (Math.abs(area.chunk2_x - area.chunk1_x) >= maxChunkCount
 					|| Math.abs(area.chunk2_z - area.chunk1_z) >= maxChunkCount) {
 				player.sendMessage(ChatColor.RED
@@ -293,7 +340,8 @@ public class FMProtectionCore extends JavaPlugin {
 			area.updatePositions();
 			FMProtectionPL.flyAreas.put(player.getName(), area);
 			addZone(player.getName(), area);
-			pListener.addPermission(player.getName(), "nogrief.flymod.use", true);
+			pListener.addPermission(player.getName(), "nogrief.flymod.use",
+					true);
 			player.sendMessage(ChatColor.GREEN + "[FlyZone] Area set!");
 		}
 

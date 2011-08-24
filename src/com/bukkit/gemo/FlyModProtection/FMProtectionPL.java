@@ -20,6 +20,8 @@ public class FMProtectionPL extends PlayerListener {
 	/************************/
 	public static HashMap<String, FMChunkArea> flyAreas;
 	public static HashMap<String, FMChunk> currentChunks;
+	
+	public static HashMap<String, Boolean> inZone;
 
 	// ///////////////////////////////////
 	//
@@ -29,6 +31,7 @@ public class FMProtectionPL extends PlayerListener {
 	public FMProtectionPL() {
 		flyAreas = new HashMap<String, FMChunkArea>();
 		currentChunks = new HashMap<String, FMChunk>();
+	    inZone = new HashMap<String, Boolean>();
 	}
 
 	// GET PLAYER
@@ -140,13 +143,20 @@ public class FMProtectionPL extends PlayerListener {
 				+ playerName + " nogrief.flymod.use");
 
 		if (showMSG)
-			getPlayer(playerName).sendMessage(
-					ChatColor.AQUA + "[FlyZone] " + ChatColor.RED
-							+ "You have left your Flymod-Zone!");
+		{
+			if(inZone.containsKey(playerName))
+			{
+				if(inZone.get(playerName))
+				{
+					getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.RED + "You have left your Flymod-Zone!");
+					inZone.put(playerName, false);
+				}
+			}
+		}			
 	}
 
 	// ADD PERMISSION
-	public void addPermission(String playerName, String node, boolean showMSG) {
+	public void addPermission(String playerName, String node, boolean showMSG) {		
 		ConsoleCommandSender sender = new ConsoleCommandSender(
 				FMProtectionCore.server);
 		FMProtectionCore.server.dispatchCommand(sender, "manselect world");
@@ -158,6 +168,8 @@ public class FMProtectionPL extends PlayerListener {
 			getPlayer(playerName).sendMessage(
 					ChatColor.AQUA + "[FlyZone] " + ChatColor.GREEN
 							+ "You have entered your Flymod-Zone!");
+		
+		inZone.put(playerName, true);
 	}
 
 	// ///////////////////////////////////
