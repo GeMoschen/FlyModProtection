@@ -1,288 +1,280 @@
 package com.bukkit.gemo.FlyModProtection;
 
 import java.util.HashMap;
+import java.util.TreeMap;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
-import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.craftbukkit.command.ColouredConsoleSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerListener;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import com.bukkit.gemo.NoGrief.NoGriefCore;
-import com.gemo.utils.BlockUtils;
-import com.gemo.utils.UtilPermissions;
 
-public class FMProtectionPL extends PlayerListener {
-	/************************/
-	/** VARS */
-	/************************/
-	public static HashMap<String, FMChunkArea> flyAreas;
-	public static HashMap<String, FMChunk> currentChunks;
-	
-	public static HashMap<String, Boolean> inZone;
+import com.bukkit.gemo.utils.UtilPermissions;
 
-	// ///////////////////////////////////
-	//
-	// CONSTRUCTOR
-	//
-	// ///////////////////////////////////
-	public FMProtectionPL() {
-		flyAreas = new HashMap<String, FMChunkArea>();
-		currentChunks = new HashMap<String, FMChunk>();
-	    inZone = new HashMap<String, Boolean>();
-	}
+public class FMProtectionPL implements Listener {
+    /************************/
+    /** VARS */
+    /************************/
+    public HashMap<String, FMChunkArea> flyAreas;
+    private HashMap<String, FMChunk> currentChunks;
+    private HashMap<String, Boolean> inZone;
+    private static ColouredConsoleSender console;
 
-	// GET PLAYER
-	public static Player getPlayer(String name) {
-		Player[] pList = FMProtectionCore.server.getOnlinePlayers();
-		for (Player player : pList) {
-			if (player.getName().equalsIgnoreCase(name))
-				return player;
-		}
-		return null;
-	}
+    private static TreeMap<String, Long> timeMap = new TreeMap<String, Long>();
 
-	// SEND TO ADMINS
-	public void sendToAdmins(String message) {
-		Player[] pList = NoGriefCore.server.getOnlinePlayers();
-		for (int i = 0; i < pList.length; i++) {
-			if (UtilPermissions.getGroupName(pList[i]).equalsIgnoreCase(
-					"admins")
-					|| UtilPermissions.playerCanUseCommand(pList[i],
-							"nogrief.flymod.showmessage")) {
-				pList[i].sendMessage(message);
-			}
-		}
-	}
+    // ///////////////////////////////////
+    //
+    // CONSTRUCTOR
+    //
+    // ///////////////////////////////////
+    public FMProtectionPL() {
+        flyAreas = new HashMap<String, FMChunkArea>();
+        currentChunks = new HashMap<String, FMChunk>();
+        inZone = new HashMap<String, Boolean>();
 
-	// ///////////////////////////////////
-	//
-	// ON MOVE
-	//
-	// ///////////////////////////////////
-	@Override
-	public void onPlayerMove(PlayerMoveEvent event) {
+        try {
+            console = (ColouredConsoleSender) FMProtectionCore.server.getConsoleSender();
+        } catch (Exception e) {
+        }
 
-		Player player = event.getPlayer();
+        long time = System.currentTimeMillis();
+        for (Player p : FMProtectionCore.server.getOnlinePlayers()) {
+            long extTime = time;
+            extTime += (Math.random() * (3000 - 1000));
+            timeMap.put(p.getName(), extTime);
+        }
+    }
 
-		if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
-			return;
+    // GET PLAYER
+    public static Player getPlayer(String name) {
+        Player[] pList = FMProtectionCore.server.getOnlinePlayers();
+        for (Player player : pList) {
+            if (player.getName().equalsIgnoreCase(name))
+                return player;
+        }
+        return null;
+    }
 
-		// IN SPACEMAP = ADD PERMISSION
-		if (event.getTo().getWorld().getName().equalsIgnoreCase("space")
-				&& !UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-			addPermission(player.getName(), "nogrief.flymod.use", false);
-			return;
-		}
+    // SEND TO ADMINS
+    public void sendToAdmins(String message) {
+        Player[] pList = Bukkit.getOnlinePlayers();
+        for (int i = 0; i < pList.length; i++) {
+            if (UtilPermissions.getGroupName(pList[i]).equalsIgnoreCase("admins") || UtilPermissions.playerCanUseCommand(pList[i], "nogrief.flymod.showmessage")) {
+                pList[i].sendMessage(message);
+            }
+        }
+    }
 
-		// SAME BLOCK = RETURN
-		if (BlockUtils.LocationEquals(event.getFrom(), event.getTo())) {
-			return;
-		}
+    // ///////////////////////////////////
+    //
+    // ON MOVE
+    //
+    // ///////////////////////////////////
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
 
-		// NOT A PAYUSER = REMOVE PERMISSION
-		if (!UtilPermissions.playerCanUseCommand(player, "fm.area")) {
-			if (UtilPermissions.playerCanUseCommand(player,
-					"nogrief.flymod.use")) {
-				removePermission(player.getName(), "nogrief.flymod.use", false);
-				return;
-			}
-		}
+        if (player.isOp())
+            return;
 
-		// GET NEW CHUNK
-		Chunk chunk = event.getTo().getBlock().getChunk();
+        // CHECK TIME
+        if (System.currentTimeMillis() <= timeMap.get(player.getName())) {
+            return;
+        }
 
-		if (!currentChunks.containsKey(player.getName()))
-			currentChunks.put(player.getName(), new FMChunk(chunk));
+        // CHECK GROUP
+        String groupName = UtilPermissions.getGroupName(player);
+        if (groupName.equalsIgnoreCase("vip") || groupName.equalsIgnoreCase("default") || groupName.equalsIgnoreCase("probe")) {
+            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                removePermission(player.getName(), "nogrief.flymod.use", false);
+                UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+            }
+            return;
+        }
 
-		// SAME CHUNK = RETURN
-		if (currentChunks.get(player.getName()).isInChunk(chunk))
-			return;
+        // CREATE NEW CHECKTIME
+        long time = System.currentTimeMillis();
+        long extTime = time;
+        extTime += (Math.random() * (500 - 1500));
+        timeMap.put(player.getName(), extTime);
 
-		// UPDATE CURRENT CHUNK
-		currentChunks.put(player.getName(), new FMChunk(chunk));
+        // IN SPACEMAP = RETURN
+        if (event.getTo().getWorld().getName().equalsIgnoreCase("space"))
+            return;
 
-		if (!flyAreas.containsKey(player.getName())) {
-			// NO FLY AREA DEFINED = REMOVE PERMISSION
-			if (UtilPermissions.playerCanUseCommand(player,
-					"nogrief.flymod.use")) {
-				removePermission(player.getName(), "nogrief.flymod.use", false);
-				return;
-			}
-		} else {
-			// AREA DEFINED = HANDLE MOVEMENT
-			// NOT IN AREA = REMOVE PERMISSION
-			if (!flyAreas.get(player.getName()).isInArea(chunk)) {
-				if (UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					removePermission(player.getName(), "nogrief.flymod.use",
-							true);
-					return;
-				}
-			} else {
-				// IN AREA = ADD PERMISSION
-				if (!UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					addPermission(player.getName(), "nogrief.flymod.use", true);
-					return;
-				}
-			}
-		}
-	}
+        // GET NEW CHUNK
+        Chunk chunk = event.getTo().getBlock().getChunk();
+        if (!currentChunks.containsKey(player.getName())) {
+            currentChunks.put(player.getName(), new FMChunk(chunk));
+        }
 
-	// REMOVE PERMISSION
-	public void removePermission(String playerName, String node, boolean showMSG) {
-		ConsoleCommandSender sender = new ConsoleCommandSender(
-				FMProtectionCore.server);
-		FMProtectionCore.server.dispatchCommand(sender, "manselect world");
+        // SAME CHUNK = RETURN
+        if (currentChunks.get(player.getName()).isInChunk(chunk)) {
+            return;
+        }
 
-		FMProtectionCore.server.dispatchCommand(sender, "manudelp "
-				+ playerName + " nogrief.flymod.use");
+        // UPDATE CURRENT CHUNK
+        currentChunks.put(player.getName(), new FMChunk(chunk));
+        if (!flyAreas.containsKey(player.getName())) {
+            // NO FLY AREA DEFINED = REMOVE PERMISSION
+            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                removePermission(player.getName(), "nogrief.flymod.use", false);
+                UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+                return;
+            }
+        } else {
+            // AREA DEFINED = HANDLE MOVEMENT
+            // NOT IN AREA = REMOVE PERMISSION
+            if (!flyAreas.get(player.getName()).isInArea(chunk)) {
+                if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                    removePermission(player.getName(), "nogrief.flymod.use", true);
+                    UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+                    return;
+                }
+            } else {
+                // IN AREA = ADD PERMISSION
+                if (!UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                    addPermission(player.getName(), "nogrief.flymod.use", true);
+                    UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+                    return;
+                }
+            }
+        }
+    }
 
-		if (showMSG)
-		{
-			if(inZone.containsKey(playerName))
-			{
-				if(inZone.get(playerName))
-				{
-					getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.RED + "You have left your Flymod-Zone!");
-					inZone.put(playerName, false);
-				}
-			}
-		}			
-	}
+    // REMOVE PERMISSION
+    public void removePermission(String playerName, String node, boolean showMSG) {
+        FMProtectionCore.server.dispatchCommand(console, "manselect world");
+        FMProtectionCore.server.dispatchCommand(console, "manudelp " + playerName + " nogrief.flymod.use");
 
-	// ADD PERMISSION
-	public void addPermission(String playerName, String node, boolean showMSG) {		
-		ConsoleCommandSender sender = new ConsoleCommandSender(
-				FMProtectionCore.server);
-		FMProtectionCore.server.dispatchCommand(sender, "manselect world");
+        if (showMSG) {
+            if (inZone.containsKey(playerName)) {
+                if (inZone.get(playerName)) {
+                    getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.RED + "You have left your Flymod-Zone!");
+                    inZone.put(playerName, false);
+                    return;
+                }
+            }
+            getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.RED + "You have left your Flymod-Zone!");
+            inZone.put(playerName, false);
+        }
+    }
 
-		FMProtectionCore.server.dispatchCommand(sender, "manuaddp "
-				+ playerName + " nogrief.flymod.use");
+    // ADD PERMISSION
+    public void addPermission(String playerName, String node, boolean showMSG) {
+        FMProtectionCore.server.dispatchCommand(console, "manselect world");
+        FMProtectionCore.server.dispatchCommand(console, "manuaddp " + playerName + " nogrief.flymod.use");
 
-		if (showMSG)
-			getPlayer(playerName).sendMessage(
-					ChatColor.AQUA + "[FlyZone] " + ChatColor.GREEN
-							+ "You have entered your Flymod-Zone!");
-		
-		inZone.put(playerName, true);
-	}
+        if (showMSG)
+            getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.GREEN + "You have entered your Flymod-Zone!");
 
-	// ///////////////////////////////////
-	//
-	// RESET METHODS
-	//
-	// ///////////////////////////////////
-	@Override
-	public void onPlayerRespawn(PlayerRespawnEvent event) {
-		Player player = event.getPlayer();
+        inZone.put(playerName, true);
+    }
 
-		if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
-			return;
-		
-		// IN SPACEMAP = ADD PERMISSION
-		if (event.getRespawnLocation().getWorld().getName()
-				.equalsIgnoreCase("space")
-				&& !UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-			addPermission(player.getName(), "nogrief.flymod.use", false);
-			return;
-		}
+    // ///////////////////////////////////
+    //
+    // RESET METHODS
+    //
+    // ///////////////////////////////////
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
 
-		// GET NEW CHUNK
-		Chunk chunk = event.getRespawnLocation().getBlock().getChunk();
-		if (!currentChunks.containsKey(player.getName()))
-			currentChunks.put(player.getName(), new FMChunk(chunk));
+        if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
+            return;
 
-		// SAME CHUNK = RETURN
-		if (currentChunks.get(player.getName()).isInChunk(chunk))
-			return;
+        // IN SPACEMAP = RETURN
+        if (event.getRespawnLocation().getWorld().getName().equalsIgnoreCase("space"))
+            return;
 
-		currentChunks.put(player.getName(), new FMChunk(chunk));
+        // GET NEW CHUNK
+        Chunk chunk = event.getRespawnLocation().getBlock().getChunk();
+        if (!currentChunks.containsKey(player.getName()))
+            currentChunks.put(player.getName(), new FMChunk(chunk));
 
-		if (!flyAreas.containsKey(player.getName())) {
-			// NO FLY AREA DEFINED = REMOVE PERMISSION
-			if (UtilPermissions.playerCanUseCommand(player,
-					"nogrief.flymod.use")) {
-				removePermission(player.getName(), "nogrief.flymod.use", false);
-				return;
-			}
-		} else {
-			// AREA DEFINED = HANDLE MOVEMENT
-			// NOT IN AREA = REMOVE PERMISSION
-			if (!flyAreas.get(player.getName()).isInArea(chunk)) {
-				if (UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					removePermission(player.getName(), "nogrief.flymod.use",
-							false);
-					return;
-				}
-			} else {
-				// IN AREA = ADD PERMISSION
-				if (!UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					addPermission(player.getName(), "nogrief.flymod.use", false);
-					return;
-				}
-			}
-		}
-	}
+        // SAME CHUNK = RETURN
+        if (currentChunks.get(player.getName()).isInChunk(chunk))
+            return;
 
-	@Override
-	public void onPlayerTeleport(PlayerTeleportEvent event) {
-		// TP TO SPACE
-		Player player = event.getPlayer();
-		if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
-			return;
-		
-		if (event.getTo().getWorld().getName().equalsIgnoreCase("space")
-				&& !event.getFrom().getWorld().getName()
-						.equalsIgnoreCase("space")) {
-			if (!UtilPermissions.playerCanUseCommand(player,
-					"nogrief.flymod.use")) {
-				addPermission(player.getName(), "nogrief.flymod.use", false);
-			}
-		} else if (!event.getTo().getWorld().getName()
-				.equalsIgnoreCase("space"))
-		// TP TO SOMEWHERE ELSE
-		{
-			if (flyAreas.containsKey(player.getName())) {
-				if (UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					if (!flyAreas.get(player.getName()).isInArea(
-							event.getTo().getBlock().getChunk())) {
-						if (event.getFrom().getWorld().getName()
-								.equalsIgnoreCase("space"))
-							removePermission(player.getName(),
-									"nogrief.flymod.use", false);
-						else
-							removePermission(player.getName(),
-									"nogrief.flymod.use", true);
+        currentChunks.put(player.getName(), new FMChunk(chunk));
 
-					}
-				} else {
-					if (flyAreas.get(player.getName()).isInArea(
-							event.getTo().getBlock().getChunk())) {
-						addPermission(player.getName(), "nogrief.flymod.use",
-								true);
-					}
-				}
-			} else {
-				if (UtilPermissions.playerCanUseCommand(player,
-						"nogrief.flymod.use")) {
-					if (event.getFrom().getWorld().getName()
-							.equalsIgnoreCase("space"))
-						removePermission(player.getName(),
-								"nogrief.flymod.use", false);
-					else
-						removePermission(player.getName(),
-								"nogrief.flymod.use", true);
-				}
-			}
-		}
-	}
+        if (!flyAreas.containsKey(player.getName())) {
+            // NO FLY AREA DEFINED = REMOVE PERMISSION
+            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                removePermission(player.getName(), "nogrief.flymod.use", false);
+                return;
+            }
+        } else {
+            // AREA DEFINED = HANDLE MOVEMENT
+            // NOT IN AREA = REMOVE PERMISSION
+            if (!flyAreas.get(player.getName()).isInArea(chunk)) {
+                if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                    removePermission(player.getName(), "nogrief.flymod.use", false);
+                    return;
+                }
+            } else {
+                // IN AREA = ADD PERMISSION
+                if (!UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                    addPermission(player.getName(), "nogrief.flymod.use", false);
+                    return;
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        long time = System.currentTimeMillis();
+        long extTime = time;
+        extTime += (Math.random() * (3000 - 1000));
+        timeMap.put(event.getPlayer().getName(), extTime);
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        timeMap.remove(event.getPlayer().getName());
+    }
+
+    @EventHandler
+    public void onPlayerTeleport(PlayerTeleportEvent event) {
+        // TP TO SPACE
+        Player player = event.getPlayer();
+
+        // IN SPACEMAP = RETURN
+        if (event.getTo().getWorld().getName().equalsIgnoreCase("space"))
+            return;
+
+        if (UtilPermissions.getGroupName(player).equalsIgnoreCase("admins"))
+            return;
+
+        if (flyAreas.containsKey(player.getName())) {
+            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                if (!flyAreas.get(player.getName()).isInArea(event.getTo().getBlock().getChunk())) {
+                    if (event.getFrom().getWorld().getName().equalsIgnoreCase("space"))
+                        removePermission(player.getName(), "nogrief.flymod.use", false);
+                    else
+                        removePermission(player.getName(), "nogrief.flymod.use", true);
+
+                }
+            } else {
+                if (flyAreas.get(player.getName()).isInArea(event.getTo().getBlock().getChunk())) {
+                    addPermission(player.getName(), "nogrief.flymod.use", true);
+                }
+            }
+        } else {
+            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+                if (event.getFrom().getWorld().getName().equalsIgnoreCase("space"))
+                    removePermission(player.getName(), "nogrief.flymod.use", false);
+                else
+                    removePermission(player.getName(), "nogrief.flymod.use", true);
+            }
+        }
+    }
 }

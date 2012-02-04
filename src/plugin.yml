@@ -1,6 +1,7 @@
 name: FlyModProtection
 main: com.bukkit.gemo.FlyModProtection.FMProtectionCore
 version: 1.0
+depend: [SinCity]
 commands:
   fly:
     description: Flymod related commands
