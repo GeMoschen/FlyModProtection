@@ -27,6 +27,8 @@ public class FMProtectionPL implements Listener {
     private HashMap<String, Boolean> inZone;
     private static ColouredConsoleSender console;
 
+    private String PERMISSION = "nocheat.checks.moving.*";
+
     private static TreeMap<String, Long> timeMap = new TreeMap<String, Long>();
 
     // ///////////////////////////////////
@@ -92,9 +94,9 @@ public class FMProtectionPL implements Listener {
         // CHECK GROUP
         String groupName = UtilPermissions.getGroupName(player);
         if (groupName.equalsIgnoreCase("vip") || groupName.equalsIgnoreCase("default") || groupName.equalsIgnoreCase("probe")) {
-            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                removePermission(player.getName(), "nogrief.flymod.use", false);
-                UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+            if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                removePermission(player.getName(), PERMISSION, false);
+                UtilPermissions.forcePermissionUpdate(player, PERMISSION);
             }
             return;
         }
@@ -124,25 +126,25 @@ public class FMProtectionPL implements Listener {
         currentChunks.put(player.getName(), new FMChunk(chunk));
         if (!flyAreas.containsKey(player.getName())) {
             // NO FLY AREA DEFINED = REMOVE PERMISSION
-            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                removePermission(player.getName(), "nogrief.flymod.use", false);
-                UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+            if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                removePermission(player.getName(), PERMISSION, false);
+                UtilPermissions.forcePermissionUpdate(player, PERMISSION);
                 return;
             }
         } else {
             // AREA DEFINED = HANDLE MOVEMENT
             // NOT IN AREA = REMOVE PERMISSION
             if (!flyAreas.get(player.getName()).isInArea(chunk)) {
-                if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                    removePermission(player.getName(), "nogrief.flymod.use", true);
-                    UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+                if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                    removePermission(player.getName(), PERMISSION, true);
+                    UtilPermissions.forcePermissionUpdate(player, PERMISSION);
                     return;
                 }
             } else {
                 // IN AREA = ADD PERMISSION
-                if (!UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                    addPermission(player.getName(), "nogrief.flymod.use", true);
-                    UtilPermissions.forcePermissionUpdate(player, "nogrief.flymod.use");
+                if (!UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                    addPermission(player.getName(), PERMISSION, true);
+                    UtilPermissions.forcePermissionUpdate(player, PERMISSION);
                     return;
                 }
             }
@@ -152,7 +154,7 @@ public class FMProtectionPL implements Listener {
     // REMOVE PERMISSION
     public void removePermission(String playerName, String node, boolean showMSG) {
         FMProtectionCore.server.dispatchCommand(console, "manselect world");
-        FMProtectionCore.server.dispatchCommand(console, "manudelp " + playerName + " nogrief.flymod.use");
+        FMProtectionCore.server.dispatchCommand(console, "manudelp " + playerName + " " + node);
 
         if (showMSG) {
             if (inZone.containsKey(playerName)) {
@@ -170,7 +172,7 @@ public class FMProtectionPL implements Listener {
     // ADD PERMISSION
     public void addPermission(String playerName, String node, boolean showMSG) {
         FMProtectionCore.server.dispatchCommand(console, "manselect world");
-        FMProtectionCore.server.dispatchCommand(console, "manuaddp " + playerName + " nogrief.flymod.use");
+        FMProtectionCore.server.dispatchCommand(console, "manuaddp " + playerName + " " + node);
 
         if (showMSG)
             getPlayer(playerName).sendMessage(ChatColor.AQUA + "[FlyZone] " + ChatColor.GREEN + "You have entered your Flymod-Zone!");
@@ -207,22 +209,22 @@ public class FMProtectionPL implements Listener {
 
         if (!flyAreas.containsKey(player.getName())) {
             // NO FLY AREA DEFINED = REMOVE PERMISSION
-            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                removePermission(player.getName(), "nogrief.flymod.use", false);
+            if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                removePermission(player.getName(), PERMISSION, false);
                 return;
             }
         } else {
             // AREA DEFINED = HANDLE MOVEMENT
             // NOT IN AREA = REMOVE PERMISSION
             if (!flyAreas.get(player.getName()).isInArea(chunk)) {
-                if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                    removePermission(player.getName(), "nogrief.flymod.use", false);
+                if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                    removePermission(player.getName(), PERMISSION, false);
                     return;
                 }
             } else {
                 // IN AREA = ADD PERMISSION
-                if (!UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
-                    addPermission(player.getName(), "nogrief.flymod.use", false);
+                if (!UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
+                    addPermission(player.getName(), PERMISSION, false);
                     return;
                 }
             }
@@ -255,25 +257,25 @@ public class FMProtectionPL implements Listener {
             return;
 
         if (flyAreas.containsKey(player.getName())) {
-            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+            if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
                 if (!flyAreas.get(player.getName()).isInArea(event.getTo().getBlock().getChunk())) {
                     if (event.getFrom().getWorld().getName().equalsIgnoreCase("space"))
-                        removePermission(player.getName(), "nogrief.flymod.use", false);
+                        removePermission(player.getName(), PERMISSION, false);
                     else
-                        removePermission(player.getName(), "nogrief.flymod.use", true);
+                        removePermission(player.getName(), PERMISSION, true);
 
                 }
             } else {
                 if (flyAreas.get(player.getName()).isInArea(event.getTo().getBlock().getChunk())) {
-                    addPermission(player.getName(), "nogrief.flymod.use", true);
+                    addPermission(player.getName(), PERMISSION, true);
                 }
             }
         } else {
-            if (UtilPermissions.playerCanUseCommand(player, "nogrief.flymod.use")) {
+            if (UtilPermissions.playerCanUseCommand(player, PERMISSION)) {
                 if (event.getFrom().getWorld().getName().equalsIgnoreCase("space"))
-                    removePermission(player.getName(), "nogrief.flymod.use", false);
+                    removePermission(player.getName(), PERMISSION, false);
                 else
-                    removePermission(player.getName(), "nogrief.flymod.use", true);
+                    removePermission(player.getName(), PERMISSION, true);
             }
         }
     }
